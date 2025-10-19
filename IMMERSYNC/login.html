@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ImmerSync | Login</title>
+
+  <!-- Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- External CSS -->
+  <link rel="stylesheet" href="css/login.css">
+
+  <!-- Firebase connection -->
+  <script type="module" src="firebase.js"></script>
+</head>
+<body>
+  <div class="left"></div>
+
+  <div class="right">
+    <div class="login-box">
+      <img src="assets/immersync-logo.png" alt="ImmerSync Logo">
+      <h1>Welcome Back</h1>
+
+      <form id="loginForm">
+        <div class="input-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" placeholder="Enter your email" required>
+        </div>
+
+        <div class="input-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" placeholder="Enter your password" required>
+        </div>
+
+        <button type="submit" class="btn">Login</button>
+      </form>
+
+      <div class="signup-text">
+        Don’t have an account? <a href="signup.html">Sign Up</a>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+    import { doc, getDoc } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
+    const auth = window.firebaseAuth;
+    const db = window.firebaseDB;
+
+    // ✅ Use proper form submit instead of button click
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+
+      if (!email || !password) {
+        alert("Please enter both email and password.");
+        return;
+      }
+
+      try {
+        // ✅ Sign in user
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        // ✅ Fetch role from Firestore
+        const userDocRef = doc(db, "users", user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+
+        if (!userDocSnap.exists()) {
+          alert("No user data found. Please sign up again.");
+          return;
+        }
+
+        const { role } = userDocSnap.data();
+        console.log("✅ Logged in as:", email, "| Role:", role);
+
+        // ✅ Redirect by role
+        switch (role) {
+          case "finance":
+            window.location.href = "finance-dashboard.html";
+            break;
+          case "logistics":
+            window.location.href = "logistics-dashboard.html";
+            break;
+          case "formator":
+            window.location.href = "formator-dashboard.html";
+            break;
+          default:
+            alert("Unknown role. Redirecting to home.");
+            window.location.href = "index.html";
+        }
+
+      } catch (err) {
+        console.error("Login error:", err);
+        alert("⚠️ " + err.message);
+      }
+    });
+  </script>
+</body>
+</html>

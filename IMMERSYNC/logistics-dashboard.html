@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ImmerSync Requester Dashboard</title>
+
+  <!-- Fonts & Icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+  <!-- Your existing dashboard CSS -->
+  <link rel="stylesheet" href="css/finance-dashboard.css">
+  <script type="module" src="firebase.js"></script>
+</head>
+
+<body>
+  <!-- Top Bar -->
+  <div class="topbar">
+    <div class="logo">
+      <img src="/assets/immersync-logo.png" alt="ImmerSync Logo">
+      <div>ImmerSync</div>
+    </div>
+    <div class="top-icons">
+       <i class="fa-solid fa-user"></i>
+      <i class="fa-solid fa-right-from-bracket" id="logoutIcon" title="Logout"></i>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="rooms-title">Rooms</div>
+      <div class="room active-room">2023-1 NSTP101.N21Am - Barangay Sabang</div>
+      <div class="add-room"><span>+</span> Add a new room</div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main">
+      <div class="main-header">
+        <h1 id="roomName">2023-1 NSTP101.N21Am</h1>
+        <p id="communityName">Barangay Sabang</p>
+        <div class="divider"></div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats">
+        <div class="stat">
+          <div>Budget</div>
+          <div class="value" id="budget">₱ 25,000</div>
+        </div>
+        <div class="stat">
+          <div>Expenses</div>
+          <div class="value" id="expenses">₱ 2,000</div>
+        </div>
+        <div class="stat">
+          <div>Remaining Balance</div>
+          <div class="value" id="balance">₱ 23,000</div>
+        </div>
+      </div>
+
+      <!-- Request Button -->
+      <button class="download" id="openRequestForm" style="background:#c9a01b; color:white; margin-bottom:1rem;">
+        Request Amount
+      </button>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <div class="tab active" data-tab="pending">Pending</div>
+        <div class="tab" data-tab="approved">Approved</div>
+        <div class="tab" data-tab="history">History</div>
+        <div class="tab" data-tab="members">Members</div>
+      </div>
+
+      <!-- Pending Tab -->
+      <div id="pending" class="tab-content active">
+        <div class="card-list" id="pendingList"></div>
+      </div>
+
+      <!-- Approved Tab -->
+      <div id="approved" class="tab-content">
+        <div class="card-list" id="approvedList">
+          <div class="card">
+            <div>
+              <div class="card-title">Med Kits</div>
+              <div class="card-desc">For community safety program</div>
+              <div class="card-time">09/05/2025 2:15 PM</div>
+            </div>
+            <div class="card-right">
+              <div class="amount">₱3,000</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- History Tab -->
+      <div id="history" class="tab-content">
+        <table id="historyTable">
+          <thead>
+            <tr style="text-align:left; border-bottom:1px solid #ccc;">
+              <th>Title</th>
+              <th>Purpose</th>
+              <th>Amount</th>
+              <th>Remark</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Med Kits</td>
+              <td>For community safety program</td>
+              <td>₱3,000</td>
+              <td>Approved</td>
+              <td>09/05/2025</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Members Tab -->
+      <div id="members" class="tab-content">
+        <ul class="member-list">
+          <li class="member">
+            <img src="/assets/user-logo.svg" alt="Ana" class="member-photo">
+            <div>
+              <p class="member-name">Ana Nicole P. Olea</p>
+              <p class="member-role">(Finance)</p>
+            </div>
+          </li>
+          <li class="member">
+            <img src="/assets/user-logo.svg" alt="Ryan" class="member-photo">
+            <div>
+              <p class="member-name">Ryan Justin Sumayao</p>
+              <p class="member-role">(Logistics)</p>
+            </div>
+          </li>
+          <li class="member">
+            <img src="/assets/user-logo.svg" alt="Yum yum Food" class="member-photo">
+            <div>
+              <p class="member-name">Yum yum Food</p>
+              <p class="member-role">(Formator)</p>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </main>
+  </div>
+
+  <!-- Request Form Modal -->
+  <div id="requestModal" class="modal">
+    <div class="modal-content fade">
+      <h2>Request Form</h2>
+      <input type="text" id="reqTitle" placeholder="Title">
+      <input type="number" id="reqAmount" placeholder="Amount">
+      <textarea id="reqPurpose" placeholder="Purpose"></textarea>
+      <button class="submit" id="submitRequest">Submit</button>
+      <button class="close" id="closeRequest">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Add Room Modal -->
+  <div id="addRoomModal" class="modal">
+    <div class="modal-content fade">
+      <h2>Add New Room</h2>
+      <input type="text" id="newRoomName" placeholder="Room Name (e.g. 2024-1 NSTP102.N21Bm)">
+      <input type="text" id="newCommunity" placeholder="Community / Project Site">
+      <button class="submit" id="createRoom">Create Room</button>
+      <button class="close" id="closeAddRoom">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ================== SCRIPT ================== -->
+  <script>
+    // Tab switching
+    document.querySelectorAll(".tab").forEach(tab => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        const tabId = tab.getAttribute("data-tab");
+        document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+        document.getElementById(tabId).classList.add("active");
+      });
+    });
+
+    // ----- REQUEST FORM -----
+    const requestModal = document.getElementById("requestModal");
+    const openRequestForm = document.getElementById("openRequestForm");
+    const closeRequest = document.getElementById("closeRequest");
+    const submitRequest = document.getElementById("submitRequest");
+    const pendingList = document.getElementById("pendingList");
+
+    openRequestForm.onclick = () => requestModal.style.display = "flex";
+    closeRequest.onclick = () => requestModal.style.display = "none";
+
+    submitRequest.onclick = () => {
+      const title = document.getElementById("reqTitle").value.trim();
+      const amount = document.getElementById("reqAmount").value.trim();
+      const purpose = document.getElementById("reqPurpose").value.trim();
+
+      if (!title || !amount || !purpose) {
+        alert("Please fill out all fields.");
+        return;
+      }
+
+      const now = new Date().toLocaleString();
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML = `
+        <div>
+          <div class="card-title">${title}</div>
+          <div class="card-desc">${purpose}</div>
+          <div class="card-time">${now}</div>
+        </div>
+        <div class="card-right"><div class="amount">₱${Number(amount).toLocaleString()}</div></div>
+      `;
+      pendingList.prepend(card);
+      requestModal.style.display = "none";
+      document.getElementById("reqTitle").value = "";
+      document.getElementById("reqAmount").value = "";
+      document.getElementById("reqPurpose").value = "";
+    };
+
+    // ----- ADD ROOM -----
+    const addRoomModal = document.getElementById("addRoomModal");
+    const openAddRoom = document.querySelector(".add-room");
+    const closeAddRoom = document.getElementById("closeAddRoom");
+    const createRoom = document.getElementById("createRoom");
+    const sidebar = document.querySelector(".sidebar");
+
+    openAddRoom.onclick = () => addRoomModal.style.display = "flex";
+    closeAddRoom.onclick = () => addRoomModal.style.display = "none";
+
+    createRoom.onclick = () => {
+      const roomName = document.getElementById("newRoomName").value.trim();
+      const community = document.getElementById("newCommunity").value.trim();
+      if (!roomName || !community) {
+        alert("Please complete all fields.");
+        return;
+      }
+
+      const newRoom = document.createElement("div");
+      newRoom.className = "room";
+      newRoom.textContent = `${roomName} - ${community}`;
+      sidebar.insertBefore(newRoom, openAddRoom);
+      addRoomModal.style.display = "none";
+      document.getElementById("newRoomName").value = "";
+      document.getElementById("newCommunity").value = "";
+    };
+
+    // Close modals on background click
+    window.onclick = (e) => {
+      if (e.target === requestModal) requestModal.style.display = "none";
+      if (e.target === addRoomModal) addRoomModal.style.display = "none";
+    };
+  </script>
+
+  <script type="module">
+  import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+  import { doc, getDoc } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
+  const auth = window.firebaseAuth;
+  const db = window.firebaseDB;
+
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+      alert("Please log in first.");
+      window.location.href = "login.html";
+      return;
+    }
+
+    try {
+      const userRef = doc(db, "users", user.uid);
+      const userSnap = await getDoc(userRef);
+
+      if (!userSnap.exists()) {
+        alert("User profile not found.");
+        window.location.href = "login.html";
+        return;
+      }
+
+      const userData = userSnap.data();
+      console.log("Logged in as:", userData.email, "Role:", userData.role);
+
+      // Only allow logistics role on this page
+      if (userData.role !== "logistics") {
+        alert("Access denied. You are not authorized to view this page.");
+        window.location.href = "login.html";
+      }
+    } catch (error) {
+      console.error("Error checking role:", error);
+      alert("Error verifying access.");
+      window.location.href = "login.html";
+    }
+  });
+  </script>
+
+</body>
+</html>

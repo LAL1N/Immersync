@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ImmerSync Finance Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="css/finance-dashboard.css">
+  <script type="module" src="firebase.js"></script>
+  <script type="module" src="logout.js"></script>
+
+</head>
+<body>
+  <div class="topbar">
+    <div class="logo">
+      <img src="/assets/immersync-logo.png" alt="ImmerSync Logo">
+      <div>ImmerSync</div>
+    </div>
+    <div class="top-icons" >
+      <i class="fa-solid fa-user"></i>
+      <i class="fa-solid fa-right-from-bracket" id="logoutIcon" title="Logout"></i>
+    </div>  
+  </div>
+
+  <div class="container">
+    <aside class="sidebar">
+      <div class="rooms-title">Rooms</div>
+      <div class="room active-room">2023-1 NSTP101.N21Am - Barangay Sabang</div>
+      <div class="add-room"><span>+</span> Add a new room</div>
+    </aside>
+
+    <main class="main">
+      <div class="main-header">
+        <h1>2023-1 NSTP101.N21Am</h1>
+        <p>Barangay Sabang</p>
+        <div class="divider"></div>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><div>Budget</div><div class="value" id="budget">₱ 25,000</div></div>
+        <div class="stat"><div>Expenses</div><div class="value" id="expenses">₱ 2,000</div></div>
+        <div class="stat"><div>Remaining Balance</div><div class="value" id="balance">₱ 23,000</div></div>
+      </div>
+
+      <div class="tabs">
+        <div class="tab active" data-tab="pending">Pending</div>
+        <div class="tab" data-tab="approved">Approved</div>
+        <div class="tab" data-tab="history">History</div>
+        <div class="tab" data-tab="members">Members</div>
+      </div>
+
+      <!-- Pending -->
+      <div id="pending" class="tab-content active">
+        <div class="card-list" id="pendingList">
+          <div class="card">
+            <div>
+              <div class="card-title">Hardware Materials</div>
+              <div class="card-desc">Pang pa-harong tangina sain paman ni?</div>
+              <div class="card-time">9/9/2025 12:59 PM</div>
+            </div>
+            <div class="card-right">
+              <div class="amount">₱3,000</div>
+              <div class="actions">
+                <button class="btn approve">Approve</button>
+                <button class="btn decline">Decline</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Approved -->
+      <div id="approved" class="tab-content">
+        <div class="card-list" id="approvedList"></div>
+      </div>
+
+      <!-- ✅ Updated History -->
+      <div id="history" class="tab-content">
+        <button id="downloadPDF" style="background:#c9a01b; color:white; margin-bottom:1rem; padding:0.6rem 1.2rem; border:none; border-radius:12px; font-weight:600; cursor:pointer;">
+          <i class="fa-solid fa-file-pdf"></i> Download PDF
+        </button>
+        <table id="historyTable" style="width:100%; border-collapse: collapse;">
+          <thead>
+            <tr style="text-align:left; border-bottom:1px solid #ccc;">
+              <th>Title</th><th>Purpose</th><th>Amount</th><th>Remark</th><th>Note</th><th>Date</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <!-- Members Tab -->
+      <div id="members" class="tab-content">
+        <ul class="member-list">
+          <li class="member">
+            <img src="/assets/user-logo.svg" alt="Ana" class="member-photo">
+            <div>
+              <p class="member-name">Ana Nicole P. Olea</p>
+              <p class="member-role">(Finance)</p>
+            </div>
+          </li>
+          <li class="member">
+            <img src="/assets/user-logo.svg" alt="Ryan" class="member-photo">
+            <div>
+              <p class="member-name">Ryan Justin Sumayao</p>
+              <p class="member-role">(Logistics)</p>
+            </div>
+          </li>
+          <li class="member">
+            <img src="/assets/user-logo.svg" alt="Yum yum Food" class="member-photo">
+            <div>
+              <p class="member-name">Yum yum Food</p>
+              <p class="member-role">(Formator)</p>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </main>
+  </div>
+
+  <!-- Update Modal -->
+  <div id="updateModal" class="modal">
+    <div class="modal-content fade">
+      <h2>Update</h2>
+      <input type="text" id="updateTitle" placeholder="Title">
+      <input type="number" id="updateAmount" placeholder="Amount">
+      <textarea id="updateNotes" placeholder="Notes"></textarea>
+      <button class="submit" id="submitUpdate">Submit</button>
+      <button class="close" id="closeUpdate">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Add Room Modal -->
+  <div id="addRoomModal" class="modal">
+    <div class="modal-content fade">
+      <h2>Add New Room</h2>
+      <input type="text" id="newRoomName" placeholder="Enter Room Code">
+      <button class="submit" id="submitRoom">Add Room</button>
+      <button class="close" id="closeRoom">Cancel</button>
+    </div>
+  </div>
+
+  <!-- jsPDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <script>
+    // Tab Switching
+    document.querySelectorAll(".tab").forEach(tab => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+        document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+        tab.classList.add("active");
+        document.getElementById(tab.dataset.tab).classList.add("active");
+      });
+    });
+
+    const approvedList = document.getElementById("approvedList");
+    const historyTable = document.querySelector("#historyTable tbody");
+
+    // Approve / Decline Logic
+    function attachActionButtons(card) {
+      const approveBtn = card.querySelector(".approve");
+      const declineBtn = card.querySelector(".decline");
+
+      if (approveBtn) {
+        approveBtn.addEventListener("click", () => {
+          const title = card.querySelector(".card-title").textContent;
+          const desc = card.querySelector(".card-desc").textContent;
+          const amount = card.querySelector(".amount").textContent;
+
+          // Clone card
+          const approvedCard = card.cloneNode(true);
+          approvedCard.querySelector(".actions").innerHTML = `<button class="btn update">Update</button>`;
+          approvedList.appendChild(approvedCard);
+
+          // Add to history
+          const row = document.createElement("tr");
+          row.innerHTML = `<td>${title}</td><td>${desc}</td><td>${amount}</td><td>Approved</td><td>-</td><td>${new Date().toLocaleDateString()}</td>`;
+          historyTable.appendChild(row);
+
+          card.remove();
+
+          approvedCard.querySelector(".update").addEventListener("click", () => openUpdateModal(approvedCard));
+        });
+      }
+
+      if (declineBtn) {
+        declineBtn.addEventListener("click", () => {
+          const title = card.querySelector(".card-title").textContent;
+          const desc = card.querySelector(".card-desc").textContent;
+          const amount = card.querySelector(".amount").textContent;
+
+          const row = document.createElement("tr");
+          row.innerHTML = `<td>${title}</td><td>${desc}</td><td>${amount}</td><td>Declined</td><td>-</td><td>${new Date().toLocaleDateString()}</td>`;
+          historyTable.appendChild(row);
+
+          card.remove();
+        });
+      }
+    }
+
+    document.querySelectorAll(".card").forEach(attachActionButtons);
+
+    // Update Modal
+    const updateModal = document.getElementById("updateModal");
+    const submitUpdate = document.getElementById("submitUpdate");
+    const closeUpdate = document.getElementById("closeUpdate");
+    let currentCard = null;
+
+    function openUpdateModal(card) {
+      updateModal.style.display = "flex";
+      updateModal.classList.add("show");
+      currentCard = card;
+    }
+
+    closeUpdate.onclick = () => {
+      updateModal.classList.remove("show");
+      setTimeout(() => updateModal.style.display = "none", 200);
+    };
+
+    submitUpdate.onclick = () => {
+      const title = document.getElementById("updateTitle").value;
+      const amount = document.getElementById("updateAmount").value;
+      const notes = document.getElementById("updateNotes").value;
+      if (title && amount) {
+        currentCard.querySelector(".card-title").textContent = title;
+        currentCard.querySelector(".amount").textContent = `₱${amount}`;
+        currentCard.querySelector(".card-desc").textContent = notes;
+        updateModal.classList.remove("show");
+        setTimeout(() => updateModal.style.display = "none", 200);
+      }
+    };
+
+    // Add Room Modal
+    const addRoomModal = document.getElementById("addRoomModal");
+    const submitRoom = document.getElementById("submitRoom");
+    const closeRoom = document.getElementById("closeRoom");
+
+    document.querySelector(".add-room").addEventListener("click", () => {
+      addRoomModal.style.display = "flex";
+      addRoomModal.classList.add("show");
+    });
+
+    closeRoom.onclick = () => {
+      addRoomModal.classList.remove("show");
+      setTimeout(() => addRoomModal.style.display = "none", 200);
+    };
+
+    submitRoom.onclick = () => {
+      const roomName = document.getElementById("newRoomName").value.trim();
+      if (roomName) {
+        const newRoom = document.createElement("div");
+        newRoom.className = "room";
+        newRoom.textContent = roomName;
+        document.querySelector(".sidebar").insertBefore(newRoom, document.querySelector(".add-room"));
+        newRoom.addEventListener("click", () => {
+          document.querySelectorAll(".room").forEach(r => r.classList.remove("active-room"));
+          newRoom.classList.add("active-room");
+        });
+        addRoomModal.classList.remove("show");
+        setTimeout(() => addRoomModal.style.display = "none", 200);
+        document.getElementById("newRoomName").value = "";
+      }
+    };
+
+    // Close modals on outside click
+    window.onclick = (e) => {
+      [updateModal, addRoomModal].forEach(modal => {
+        if (e.target === modal) {
+          modal.classList.remove("show");
+          setTimeout(() => modal.style.display = "none", 200);
+        }
+      });
+    };
+
+    // ✅ Download PDF (ImmerSync style)
+    document.getElementById("downloadPDF").addEventListener("click", () => {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      doc.setFontSize(16);
+      doc.text("ImmerSync Finance Report", 14, 20);
+      doc.setFontSize(12);
+      doc.text("------------------------------------------------------", 14, 27);
+
+      let y = 35;
+      const rows = document.querySelectorAll("#historyTable tbody tr");
+      rows.forEach((row, i) => {
+        const cols = row.querySelectorAll("td");
+        doc.text(`${i + 1}. ${cols[0].textContent} - ${cols[1].textContent}`, 14, y);
+        doc.text(`Amount: ${cols[2].textContent} | ${cols[3].textContent} | ${cols[5].textContent}`, 14, y + 7);
+        y += 15;
+      });
+
+      doc.save("ImmerSync_Finance_History.pdf");
+    });
+  </script>
+
+
+  <script type="module">
+  import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+  import { doc, getDoc } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
+  const auth = window.firebaseAuth;
+  const db = window.firebaseDB;
+
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+      alert("Please log in first.");
+      window.location.href = "login.html";
+      return;
+    }
+
+    try {
+      const userRef = doc(db, "users", user.uid);
+      const userSnap = await getDoc(userRef);
+
+      if (!userSnap.exists()) {
+        alert("User profile not found.");
+        window.location.href = "login.html";
+        return;
+      }
+
+      const userData = userSnap.data();
+      console.log("Logged in as:", userData.email, "Role:", userData.role);
+
+      // Only allow finance role on this page
+      if (userData.role !== "finance") {
+        alert("Access denied. You are not authorized to view this page.");
+        window.location.href = "login.html";
+      }
+    } catch (error) {
+      console.error("Error checking role:", error);
+      alert("Error verifying access.");
+      window.location.href = "login.html";
+    }
+  });
+  </script>
+
+  
+
+</body>
+</html>
