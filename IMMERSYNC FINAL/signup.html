@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ImmerSync | Sign Up</title>
+
+  <!-- Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+
+  <!-- External CSS -->
+  <link rel="stylesheet" href="css/signup.css">
+
+  <!-- ✅ Firebase connection -->
+  <script type="module" src="./firebase.js"></script>
+</head>
+<body>
+  <div class="left"></div>
+  
+  <div class="right">
+    <div class="signup-box">
+      <img src="assets/immersync-logo.png" alt="ImmerSync Logo">
+      <h1>Create Account</h1>
+      
+      <!-- ✅ Fixed form ID -->
+      <form id="signupForm">
+        <div class="input-group">
+          <label for="fullname">Full Name</label>
+          <input type="text" id="fullname" placeholder="Enter your full name" required>
+        </div>
+
+        <div class="input-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" placeholder="Enter your email" required>
+        </div>
+
+        <div class="input-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" placeholder="Enter your password" required>
+        </div>
+
+        <div class="input-group">
+          <label for="role">Role</label>
+          <select id="role" required>
+            <option value="" disabled selected>Select your role</option>
+            <option value="finance">Finance</option>
+            <option value="logistics">Logistics</option>
+            <option value="formator">Formator</option>
+          </select>
+        </div>
+
+        <!-- ✅ Fixed button type -->
+        <button type="submit" class="btn">Sign Up</button>
+      </form>
+
+      <div class="login-text">
+        Already have an account? <a href="index.html">Login</a>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+    import { setDoc, doc } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
+    // ✅ Use global firebase objects from firebase.js
+    const auth = window.firebaseAuth;
+    const db = window.firebaseDB;
+
+    // ✅ Wait for form submit
+    document.getElementById("signupForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const fullname = document.getElementById("fullname").value.trim();
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+      const role = document.getElementById("role").value;
+
+      if (!fullname || !email || !password || !role) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Missing Information',
+          text: 'Please fill in all fields.',
+          confirmButtonColor: '#005F92',
+          heightAuto: false,
+          grow: false
+        });
+        return;
+      }
+
+      try {
+        // ✅ Create user in Firebase Authentication
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        // ✅ Save user details in Firestore
+        await setDoc(doc(db, "users", user.uid), {
+          fullname,
+          email,
+          role,
+          createdAt: new Date()
+        });
+
+        Swal.fire({
+          icon: 'success',
+          title: 'Account Created!',
+          text: 'Account created successfully!',
+          confirmButtonColor: '#005F92',
+          heightAuto: false,
+          grow: false,
+          timer: 2000
+        }).then(() => {
+          window.location.href = "index.html";
+        });
+
+      } catch (error) {
+        console.error("Signup error:", error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Signup Failed',
+          text: error.message,
+          confirmButtonColor: '#005F92',
+          heightAuto: false,
+          grow: false
+        });
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,667 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ImmerSync Finance Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+
+  <link rel="stylesheet" href="css/finance-dashboard.css">
+  <script type="module" src="firebase.js"></script>
+</head>
+<body>
+  <div class="topbar">
+    <div class="logo">
+      <img src="/assets/immersync-logo.png" alt="ImmerSync Logo">
+      <div>ImmerSync</div>
+    </div>
+    <div class="top-icons">
+      <i class="fa-solid fa-user"></i>
+      <i class="fa-solid fa-right-from-bracket" id="logoutIcon" title="Logout"></i>
+    </div>  
+  </div>
+
+  <div class="container">
+    <aside class="sidebar">
+      <div class="rooms-title">Rooms</div>
+      <div id="roomsList">
+        <!-- Rooms will be loaded here -->
+      </div>
+      <div class="add-room"><span>+</span> Join a room</div>
+    </aside>
+
+    <main class="main">
+      <div class="main-header">
+        <h1 id="roomName">Select a Room</h1>
+        <p id="communityName">Choose a room to manage requests</p>
+        <div class="divider"></div>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><div>Budget</div><div class="value" id="budget">₱ 0</div></div>
+        <div class="stat"><div>Expenses</div><div class="value" id="expenses">₱ 0</div></div>
+        <div class="stat"><div>Remaining Balance</div><div class="value" id="balance">₱ 0</div></div>
+      </div>
+
+      <div class="tabs">
+        <div class="tab active" data-tab="pending">Pending</div>
+        <div class="tab" data-tab="approved">Approved</div>
+        <div class="tab" data-tab="history">History</div>
+        <div class="tab" data-tab="members">Members</div>
+      </div>
+
+      <!-- Pending -->
+      <div id="pending" class="tab-content active">
+        <div class="card-list" id="pendingList">
+          <p style="color:#777; text-align:center;">Select a room to view pending requests</p>
+        </div>
+      </div>
+
+      <!-- Approved -->
+      <div id="approved" class="tab-content">
+        <div class="card-list" id="approvedList">
+          <p style="color:#777; text-align:center;">Select a room to view approved requests</p>
+        </div>
+      </div>
+
+      <!-- History -->
+      <div id="history" class="tab-content">
+        <button id="downloadPDF" style="background:#c9a01b; color:white; margin-bottom:1rem; padding:0.6rem 1.2rem; border:none; border-radius:12px; font-weight:600; cursor:pointer;">
+          <i class="fa-solid fa-file-pdf"></i> Download PDF
+        </button>
+        <table id="historyTable" style="width:100%; border-collapse: collapse;">
+          <thead>
+            <tr style="text-align:left; border-bottom:1px solid #ccc;">
+              <th>Title</th><th>Purpose</th><th>Amount</th><th>Status</th><th>Requested By</th><th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td colspan="6" style="text-align:center; color:#777;">Select a room to view history</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Members Tab -->
+      <div id="members" class="tab-content">
+        <ul class="member-list" id="membersList">
+          <p style="color:#777; text-align:center;">Select a room to view members</p>
+        </ul>
+      </div>
+    </main>
+  </div>
+
+  <!-- Join Room Modal -->
+  <div id="joinRoomModal" class="modal">
+    <div class="modal-content fade">
+      <h2>Join Room</h2>
+      <input type="text" id="roomCode" placeholder="Enter Room Code (provided by Formator)">
+      <button class="submit" id="joinRoom">Join Room</button>
+      <button class="close" id="closeJoinRoom">Cancel</button>
+    </div>
+  </div>
+
+  <!-- jsPDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <script type="module">
+    import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+    import { 
+      doc, getDoc, collection, query, where, onSnapshot, 
+      updateDoc, arrayUnion, getDocs, increment 
+    } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
+    let currentRoomId = null;
+    let currentUser = null;
+
+    // Tab Switching
+    document.querySelectorAll(".tab").forEach(tab => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+        document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+        tab.classList.add("active");
+        document.getElementById(tab.dataset.tab).classList.add("active");
+      });
+    });
+
+    // ----- JOIN ROOM -----
+    const joinRoomModal = document.getElementById("joinRoomModal");
+    const openJoinRoom = document.querySelector(".add-room");
+    const closeJoinRoom = document.getElementById("closeJoinRoom");
+    const joinRoomBtn = document.getElementById("joinRoom");
+
+    openJoinRoom.onclick = () => joinRoomModal.style.display = "flex";
+    closeJoinRoom.onclick = () => joinRoomModal.style.display = "none";
+
+    joinRoomBtn.onclick = async () => {
+      const roomCode = document.getElementById("roomCode").value.trim().toUpperCase();
+      if (!roomCode) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Room Code Required',
+          text: 'Please enter a room code.',
+          confirmButtonColor: '#005F92'
+        });
+        return;
+      }
+
+      try {
+        const db = window.firebaseDB;
+        
+        // Find room by code
+        const roomsQuery = query(collection(db, "rooms"), where("code", "==", roomCode));
+        const querySnapshot = await getDocs(roomsQuery);
+        
+        if (querySnapshot.empty) {
+          Swal.fire({
+            icon: 'error',
+            title: 'Room Not Found',
+            text: 'Room not found. Please check the room code.',
+            confirmButtonColor: '#005F92'
+          });
+          return;
+        }
+
+        const roomDoc = querySnapshot.docs[0];
+        const roomId = roomDoc.id;
+        const roomData = roomDoc.data();
+        
+        // Check if user is already a member
+        if (roomData.members.includes(currentUser.uid)) {
+          Swal.fire({
+            icon: 'info',
+            title: 'Already a Member',
+            text: 'You are already a member of this room.',
+            confirmButtonColor: '#005F92'
+          });
+          joinRoomModal.style.display = "none";
+          return;
+        }
+        
+        // Add user to room members
+        await updateDoc(doc(db, "rooms", roomId), {
+          members: arrayUnion(currentUser.uid)
+        });
+
+        joinRoomModal.style.display = "none";
+        document.getElementById("roomCode").value = "";
+        
+        // Reload rooms
+        loadUserRooms();
+        
+        Swal.fire({
+          icon: 'success',
+          title: 'Success!',
+          text: 'Successfully joined room!',
+          confirmButtonColor: '#005F92',
+          timer: 2000
+        });
+        
+      } catch (error) {
+        console.error("Error joining room:", error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Error joining room: ' + error.message,
+          confirmButtonColor: '#005F92'
+        });
+      }
+    };
+
+    // Close modal on background click
+    window.onclick = (e) => {
+      if (e.target === joinRoomModal) joinRoomModal.style.display = "none";
+    };
+
+    // ----- LOAD USER ROOMS -----
+    async function loadUserRooms() {
+      try {
+        const db = window.firebaseDB;
+        const roomsQuery = query(
+          collection(db, "rooms"), 
+          where("members", "array-contains", currentUser.uid)
+        );
+        
+        const querySnapshot = await getDocs(roomsQuery);
+        const roomsList = document.getElementById("roomsList");
+        
+        roomsList.innerHTML = "";
+        
+        querySnapshot.forEach((doc) => {
+          const roomData = doc.data();
+          const roomElement = document.createElement("div");
+          roomElement.className = "room";
+          roomElement.textContent = `${roomData.name} - ${roomData.community}`;
+          roomElement.dataset.roomId = doc.id;
+          
+          roomElement.addEventListener("click", () => {
+            selectRoom(doc.id, roomData);
+          });
+          
+          roomsList.appendChild(roomElement);
+        });
+
+        // Auto-select first room if available
+        if (querySnapshot.docs.length > 0) {
+          const firstRoom = querySnapshot.docs[0];
+          selectRoom(firstRoom.id, firstRoom.data());
+        } else {
+          // No rooms - show empty state
+          document.getElementById("roomName").textContent = "No Rooms";
+          document.getElementById("communityName").textContent = "Join a room to manage requests";
+        }
+        
+      } catch (error) {
+        console.error("Error loading rooms:", error);
+      }
+    }
+
+    // ----- SELECT ROOM -----
+    function selectRoom(roomId, roomData) {
+      currentRoomId = roomId;
+      
+      // Update UI
+      document.getElementById("roomName").textContent = roomData.name;
+      document.getElementById("communityName").textContent = roomData.community;
+      document.getElementById("budget").textContent = `₱ ${roomData.initialBudget?.toLocaleString() || '0'}`;
+      document.getElementById("expenses").textContent = `₱ ${roomData.expenses?.toLocaleString() || '0'}`;
+      document.getElementById("balance").textContent = `₱ ${roomData.remainingBudget?.toLocaleString() || '0'}`;
+      
+      // Update active room in sidebar
+      document.querySelectorAll(".room").forEach(room => {
+        room.classList.remove("active-room");
+      });
+      document.querySelector(`.room[data-room-id="${roomId}"]`).classList.add("active-room");
+      
+      // Load room-specific data
+      setupRequestListeners(roomId);
+      loadRoomMembers(roomId);
+      setupBudgetListener(roomId);
+    }
+
+    // ----- REAL-TIME REQUEST LISTENER -----
+    function setupRequestListeners(roomId) {
+      const db = window.firebaseDB;
+      
+      const requestsQuery = query(
+        collection(db, "requests"), 
+        where("roomId", "==", roomId)
+      );
+      
+      onSnapshot(requestsQuery, (snapshot) => {
+        const pendingList = document.getElementById("pendingList");
+        const approvedList = document.getElementById("approvedList");
+        const historyTable = document.querySelector("#historyTable tbody");
+        
+        pendingList.innerHTML = "";
+        approvedList.innerHTML = "";
+        historyTable.innerHTML = "";
+        
+        snapshot.forEach((doc) => {
+          const request = doc.data();
+          const requestId = doc.id;
+          
+          if (request.status === "pending") {
+            displayPendingRequest(request, requestId, pendingList);
+          } else if (request.status === "approved") {
+            displayApprovedRequest(request, approvedList);
+            addToHistory(request, historyTable);
+          } else if (request.status === "declined") {
+            addToHistory(request, historyTable);
+          }
+        });
+        
+        // Show empty states
+        if (pendingList.children.length === 0) {
+          pendingList.innerHTML = '<p style="color:#777; text-align:center;">No pending requests</p>';
+        }
+        if (approvedList.children.length === 0) {
+          approvedList.innerHTML = '<p style="color:#777; text-align:center;">No approved requests</p>';
+        }
+        if (historyTable.children.length === 0) {
+          historyTable.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#777;">No history yet</td></tr>';
+        }
+      });
+    }
+
+    // ----- DISPLAY PENDING REQUEST WITH ACTION BUTTONS -----
+    function displayPendingRequest(request, requestId, container) {
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML = `
+        <div>
+          <div class="card-title">${request.title}</div>
+          <div class="card-desc">${request.purpose}</div>
+          <div class="card-time">${new Date(request.createdAt?.toDate()).toLocaleString()}</div>
+          <div class="card-requester" style="font-size: 0.8rem; color: #666;">Requested by: ${request.requestedByName}</div>
+        </div>
+        <div class="card-right">
+          <div class="amount">₱${request.amount.toLocaleString()}</div>
+          <div class="actions">
+            <button class="btn approve" data-request="${requestId}" data-amount="${request.amount}">Approve</button>
+            <button class="btn decline" data-request="${requestId}">Decline</button>
+          </div>
+        </div>
+      `;
+      container.appendChild(card);
+      
+      // Add event listeners
+      card.querySelector('.approve').addEventListener('click', approveRequest);
+      card.querySelector('.decline').addEventListener('click', declineRequest);
+    }
+
+    // ----- DISPLAY APPROVED REQUEST -----
+    function displayApprovedRequest(request, container) {
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML = `
+        <div>
+          <div class="card-title">${request.title}</div>
+          <div class="card-desc">${request.purpose}</div>
+          <div class="card-time">${new Date(request.createdAt?.toDate()).toLocaleString()}</div>
+          <div style="font-size: 0.8rem; color: #666;">Requested by: ${request.requestedByName}</div>
+        </div>
+        <div class="card-right">
+          <div class="amount">₱${request.amount.toLocaleString()}</div>
+          <div style="color: green; font-weight: 600;">Approved</div>
+        </div>
+      `;
+      container.appendChild(card);
+    }
+
+    // ----- ADD TO HISTORY TABLE -----
+    function addToHistory(request, table) {
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${request.title}</td>
+        <td>${request.purpose}</td>
+        <td>₱${request.amount.toLocaleString()}</td>
+        <td>${request.status}</td>
+        <td>${request.requestedByName}</td>
+        <td>${new Date(request.createdAt?.toDate()).toLocaleDateString()}</td>
+      `;
+      table.appendChild(row);
+    }
+
+    // ----- APPROVE REQUEST -----
+    async function approveRequest(event) {
+      const requestId = event.target.dataset.request;
+      const amount = parseFloat(event.target.dataset.amount);
+      
+      try {
+        const db = window.firebaseDB;
+        
+        // Update request status
+        await updateDoc(doc(db, "requests", requestId), {
+          status: "approved",
+          approvedBy: currentUser.uid,
+          approvedByName: currentUser.email,
+          approvedAt: new Date()
+        });
+
+        // Update room budget
+        const roomRef = doc(db, "rooms", currentRoomId);
+        await updateDoc(roomRef, {
+          remainingBudget: increment(-amount),
+          expenses: increment(amount)
+        });
+        
+        Swal.fire({
+          icon: 'success',
+          title: 'Approved!',
+          text: 'Request approved! Budget updated.',
+          confirmButtonColor: '#005F92',
+          timer: 2000
+        });
+        
+      } catch (error) {
+        console.error("Error approving request:", error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Error approving request: ' + error.message,
+          confirmButtonColor: '#005F92'
+        });
+      }
+    }
+
+    // ----- DECLINE REQUEST -----
+    async function declineRequest(event) {
+      const requestId = event.target.dataset.request;
+      
+      const result = await Swal.fire({
+        title: 'Are you sure?',
+        text: "You want to decline this request?",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, decline it!',
+        cancelButtonText: 'Cancel'
+      });
+
+      if (!result.isConfirmed) return;
+      
+      try {
+        const db = window.firebaseDB;
+
+        await updateDoc(doc(db, "requests", requestId), {
+          status: "declined",
+          declinedBy: currentUser.uid,
+          declinedAt: new Date()
+        });
+        
+        Swal.fire({
+          icon: 'success',
+          title: 'Declined!',
+          text: '❌ Request declined.',
+          confirmButtonColor: '#005F92',
+          timer: 2000
+        });
+        
+      } catch (error) {
+        console.error("Error declining request:", error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Error declining request: ' + error.message,
+          confirmButtonColor: '#005F92'
+        });
+      }
+    }
+
+    // ----- REAL-TIME BUDGET UPDATES -----
+    function setupBudgetListener(roomId) {
+      const db = window.firebaseDB;
+      
+      const roomRef = doc(db, "rooms", roomId);
+      
+      onSnapshot(roomRef, (doc) => {
+        if (doc.exists()) {
+          const roomData = doc.data();
+          document.getElementById("budget").textContent = `₱ ${roomData.initialBudget?.toLocaleString() || '0'}`;
+          document.getElementById("expenses").textContent = `₱ ${roomData.expenses?.toLocaleString() || '0'}`;
+          document.getElementById("balance").textContent = `₱ ${roomData.remainingBudget?.toLocaleString() || '0'}`;
+        }
+      });
+    }
+
+    // ----- LOAD ROOM MEMBERS -----
+    async function loadRoomMembers(roomId) {
+      try {
+        const db = window.firebaseDB;
+        const roomDoc = await getDoc(doc(db, "rooms", roomId));
+        const roomData = roomDoc.data();
+        const membersList = document.getElementById("membersList");
+        
+        membersList.innerHTML = "";
+        
+        // Get user details for each member
+        for (const memberId of roomData.members || []) {
+          const userDoc = await getDoc(doc(db, "users", memberId));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            const memberElement = document.createElement("li");
+            memberElement.className = "member";
+            memberElement.innerHTML = `
+              <img src="/assets/user-logo.svg" alt="${userData.fullname}" class="member-photo">
+              <div>
+                <p class="member-name">${userData.fullname}</p>
+                <p class="member-role">(${userData.role})</p>
+              </div>
+            `;
+            membersList.appendChild(memberElement);
+          }
+        }
+        
+        if (membersList.children.length === 0) {
+          membersList.innerHTML = '<p style="color:#777; text-align:center;">No members found</p>';
+        }
+        
+      } catch (error) {
+        console.error("Error loading members:", error);
+        membersList.innerHTML = '<p style="color:#777; text-align:center;">Error loading members</p>';
+      }
+    }
+
+    // ----- DOWNLOAD PDF -----
+    document.getElementById("downloadPDF").addEventListener("click", () => {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      const roomName = document.getElementById("roomName").textContent;
+      const community = document.getElementById("communityName").textContent;
+
+      doc.setFontSize(16);
+      doc.text("ImmerSync Finance Report", 14, 20);
+      doc.setFontSize(12);
+      doc.text(`Room: ${roomName}`, 14, 30);
+      doc.text(`Community: ${community}`, 14, 37);
+      doc.text("------------------------------------------------------", 14, 42);
+
+      let y = 50;
+      const rows = document.querySelectorAll("#historyTable tbody tr");
+      if (rows.length === 0) {
+        doc.text("No financial history available", 14, y);
+      } else {
+        rows.forEach((row, i) => {
+          const cols = row.querySelectorAll("td");
+          doc.text(`${i + 1}. ${cols[0].textContent} - ${cols[1].textContent}`, 14, y);
+          doc.text(`Amount: ${cols[2].textContent} | ${cols[3].textContent} | Requested by: ${cols[4].textContent}`, 14, y + 7);
+          y += 15;
+        });
+      }
+
+      doc.save(`ImmerSync_Finance_Report_${roomName.replace(/\s+/g, "_")}.pdf`);
+    });
+
+    // ----- LOGOUT -----
+    function setupLogout() {
+      const logoutFunction = async () => {
+        const result = await Swal.fire({
+          title: 'Logout?',
+          text: 'Are you sure you want to log out?',
+          icon: 'question',
+          showCancelButton: true,
+          confirmButtonColor: '#d33',
+          cancelButtonColor: '#3085d6',
+          confirmButtonText: 'Yes, log out!',
+          cancelButtonText: 'Cancel'
+        });
+
+        if (!result.isConfirmed) return;
+
+        try {
+          await signOut(window.firebaseAuth);
+          Swal.fire({
+            icon: 'success',
+            title: 'Logged Out!',
+            text: 'You have been logged out.',
+            confirmButtonColor: '#005F92',
+            timer: 1500
+          }).then(() => {
+            window.location.href = "index.html";
+          });
+        } catch (error) {
+          console.error("Logout Error:", error);
+          Swal.fire({
+            icon: 'error',
+            title: 'Logout Failed',
+            text: 'Error signing out. Please try again.',
+            confirmButtonColor: '#005F92'
+          });
+        }
+      };
+
+      // Add logout to logout icon
+      document.getElementById("logoutIcon").addEventListener("click", logoutFunction);
+      
+      // Add logout to user icon
+      const userIcon = document.querySelector('.fa-user');
+      if (userIcon) {
+        userIcon.addEventListener("click", logoutFunction);
+        userIcon.style.cursor = "pointer";
+        userIcon.title = "Logout";
+      }
+    }
+
+    // ----- INITIALIZE -----
+    onAuthStateChanged(window.firebaseAuth, async (user) => {
+      if (!user) {
+        window.location.href = "index.html";
+        return;
+      }
+
+      try {
+        const userRef = doc(window.firebaseDB, "users", user.uid);
+        const userSnap = await getDoc(userRef);
+
+        if (!userSnap.exists()) {
+          Swal.fire({
+            icon: 'error',
+            title: 'Profile Not Found',
+            text: 'User profile not found.',
+            confirmButtonColor: '#005F92'
+          }).then(() => {
+            window.location.href = "index.html";
+          });
+          return;
+        }
+
+        const userData = userSnap.data();
+        if (userData.role !== "finance") {
+          Swal.fire({
+            icon: 'error',
+            title: 'Access Denied',
+            text: 'Access denied. You are not authorized to view this page.',
+            confirmButtonColor: '#005F92'
+          }).then(() => {
+            window.location.href = "index.html";
+          });
+          return;
+        }
+
+        currentUser = user;
+        loadUserRooms();
+        setupLogout(); // Initialize logout functionality
+        
+      } catch (error) {
+        console.error("Error:", error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Error verifying access.',
+          confirmButtonColor: '#005F92'
+        }).then(() => {
+          window.location.href = "index.html";
+        });
+      }
+    });
+  </script>
+</body>
+</html>

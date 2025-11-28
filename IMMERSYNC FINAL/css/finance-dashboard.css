@@ -1,0 +1,223 @@
+  :root {
+      --primary: #005F92;
+      --primary-dark: #095a71;
+      --gray-light: #f2efee;
+      --gray-dark: #444;
+      --white: #fff;
+      --shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+      --radius: 12px;
+      font-family: "Inter", system-ui, sans-serif;
+    }
+
+    body { margin: 0; background: #f5f3f2; color: #222; }
+
+    .topbar { background: var(--primary); color: white; display: flex; align-items: center; justify-content: space-between; padding: 1.5rem 2rem; }
+    .logo { display: flex; align-items: center; gap: 0.6rem; font-weight: 600; }
+    .logo img { height: 32px; }
+
+    .container { display: flex; gap: 3rem; padding: 4rem; }
+
+    .sidebar { width: 260px; }
+    .rooms-title { font-weight: 600; margin-bottom: 0.5rem; }
+    .room { background: var(--primary); color: white; padding: 1rem; border-radius: var(--radius); font-weight: 600; box-shadow: var(--shadow); margin-bottom: 0.8rem; cursor: pointer; }
+    .room.secondary { background: var(--white); color: #333; box-shadow: var(--shadow); }
+    .room.active-room { outline: 3px solid var(--primary-dark); }
+    .add-room { display: flex; align-items: center; gap: 0.5rem; margin-top: 2rem; cursor: pointer; justify-content: center; }
+    .add-room span { background: var(--primary); color: white; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-weight: 700; }
+
+    .main { flex: 1; }
+    .main-header h1 { margin: 0; font-size: 1.6rem; font-weight: 700; }
+    .main-header p { color: #777; margin: 0.2rem 0 1rem; }
+    .divider { height: 1px; background: #ddd; margin-bottom: 1rem; }
+
+    .stats { display: flex; gap: 7rem; margin-bottom: 1rem; }
+    .stat { font-size: 0.95rem; }
+    .stat .value { font-size: 1.4rem; font-weight: 700; }
+
+    .tabs { display: flex; gap: 0.6rem; margin: 1.2rem 0; }
+    .tab { background: #eee; border-radius: var(--radius); padding: 0.6rem 1.2rem; cursor: pointer; box-shadow: var(--shadow); font-weight: 600; }
+    .tab.active { background: var(--primary); color: white; }
+
+    .card-list { display: flex; flex-direction: column; gap: 1rem; }
+    .card { background: var(--white); border-radius: var(--radius); padding: 1rem 1.2rem; box-shadow: var(--shadow); display: flex; justify-content: space-between; align-items: flex-start; }
+    .card-title { font-weight: 700; margin-bottom: 0.3rem; }
+    .card-desc { color: #555; font-size: 0.9rem; margin-bottom: 0.4rem; }
+    .card-time { font-size: 0.8rem; color: #888; }
+    .card-right { text-align: right; }
+    .amount { font-weight: 700; font-size: 1.1rem; }
+    .actions { margin-top: 0.5rem; display: flex; gap: 0.4rem; }
+    .btn { border: none; border-radius: 8px; padding: 0.4rem 0.9rem; font-weight: 600; cursor: pointer; color: white; }
+    .approve { background: var(--primary); }
+    .decline { background: #444; }
+    .update { background: #c9a01b; }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); justify-content: center; align-items: center; }
+    .modal-content { background: white; padding: 2rem; border-radius: var(--radius); box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 1rem; width: 320px; }
+    .modal-content input, .modal-content textarea { padding: 0.6rem; border: 1px solid #ccc; border-radius: var(--radius); }
+    .modal-content button { padding: 0.6rem; border: none; border-radius: var(--radius); font-weight: 600; cursor: pointer; }
+    .modal-content h2 { margin: 0; }
+    .close { background: #ccc; }
+    .submit { background: var(--primary); color: white; }
+    .download { margin-top: 1rem; background: #ffc107; border: none; padding: 0.6rem 1.2rem; border-radius: var(--radius); font-weight: 600; cursor: pointer; }
+
+div#members > ul > p {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+}
+div#members > ul {
+  list-style: none;
+  padding: 0;
+}
+
+.member-photo {
+  color: #555;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-right: 1rem;
+}
+
+.member {
+  display: flex;
+  align-items: center;
+}
+
+#historyTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+#historyTable th,
+#historyTable td {
+  padding: 0.9rem 1rem; /* adds vertical space between rows */
+  border-bottom: 1px solid #ddd;
+}
+
+#historyTable th {
+  background-color: #f9f9f9;
+  font-weight: 600;
+}
+
+#historyTable tr:hover {
+  background-color: #f3f3f3; /* soft hover highlight */
+}
+
+#historyTable td {
+  line-height: 1.4;
+  color: #333;
+}
+
+/* Add this to the bottom of your finance-dashboard.css file */
+.modal-content input,
+.modal-content textarea,
+.modal-content select {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.8rem;
+  padding: 12px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.modal-content textarea {
+  resize: vertical;
+  min-height: 80px;
+  font-family: 'Inter', sans-serif;
+}
+
+.modal-content input:focus,
+.modal-content textarea:focus,
+.modal-content select:focus {
+  outline: none;
+  border-color: #005F92;
+  box-shadow: 0 0 0 3px rgba(0, 95, 146, 0.15);
+}
+
+/* Room styling updates */
+.room {
+  background: #f3f3f3; /* Light blue background for inactive rooms */
+  color: #373737; /* Dark blue text */
+  padding: 1rem;
+  border-radius: var(--radius);
+  font-weight: 600;
+  box-shadow: var(--shadow);
+  margin-bottom: 0.8rem;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.room:hover {
+  background: #bbdefb; /* Slightly darker blue on hover */
+  transform: translateY(-2px);
+}
+
+.room.active-room {
+  background: var(--primary); /* Dark blue background for active room */
+  color: white; /* White text for active room */
+  border: 2px solid var(--primary-dark);
+  box-shadow: 0 4px 12px rgba(0, 95, 146, 0.3);
+}
+
+.room.secondary {
+  background: var(--white);
+  color: #333;
+  box-shadow: var(--shadow);
+}
+
+
+/* Ultra compact members list */
+.member {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.3rem; /* Very small gap between members */
+  padding: 0.5rem 0.5rem;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+}
+
+.member:hover {
+  background-color: #f5f5f5;
+}
+
+.member-photo {
+  color: #555;
+  width: 40px; /* Even smaller */
+  height: 40px; /* Even smaller */
+  border-radius: 50%;
+  object-fit: cover;
+  margin-right: 0.6rem; /* Minimal margin */
+}
+
+.member-name {
+  font-weight: 600;
+  font-size: 1rem;
+  margin: 0;
+  line-height: 1.1; /* Very tight */
+}
+
+.member-role {
+  color: #666;
+  font-size: 0.75rem;
+  margin: 0;
+  line-height: 1.1; /* Very tight */
+  font-style: italic;
+  text-transform: capitalize;
+}
+
+.member-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+#members .member-list {
+  padding: 0.3rem 0;
+}

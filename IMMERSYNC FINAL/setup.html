@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Setup Database</title>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <script type="module" src="firebase.js"></script>
+</head>
+<body>
+    <h1>Setting up database...</h1>
+    <script type="module">
+        import { doc, setDoc, collection, addDoc } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+        
+        const db = window.firebaseDB;
+        
+        async function setupDatabase() {
+            try {
+                // Create sample room
+                const roomRef = await addDoc(collection(db, "rooms"), {
+                    name: "2023-1 NSTP101.N21Am",
+                    community: "Barangay Sabang",
+                    code: "NSTP101", // For joining rooms
+                    initialBudget: 25000,
+                    remainingBudget: 25000,
+                    expenses: 0,
+                    members: [], // Will be filled when users join
+                    createdBy: "system",
+                    createdAt: new Date()
+                });
+                
+                console.log("Sample room created with ID: ", roomRef.id);
+                
+                Swal.fire({
+                  icon: 'success',
+                  title: 'Database Setup Complete!',
+                  html: `Database setup complete!<br><br><strong>Room code: NSTP101</strong>`,
+                  confirmButtonColor: '#005F92'
+                });
+                
+            } catch (error) {
+                console.error("Setup error:", error);
+                Swal.fire({
+                  icon: 'error',
+                  title: 'Setup Error',
+                  text: 'Error: ' + error.message,
+                  confirmButtonColor: '#005F92'
+                });
+            }
+        }
+        
+        setupDatabase();
+    </script>
+</body>
+</html>
